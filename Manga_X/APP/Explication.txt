@@ -1,0 +1,39 @@
+
+# Explication du programme de téléchargement de mangas
+
+Ce programme est un **téléchargeur de mangas** depuis le site hhentai.fr. Il fonctionne en plusieurs étapes :
+
+1. **Entrée de l’URL** :
+   L’utilisateur entre le lien du manga qu’il souhaite télécharger dans l’interface graphique.
+
+2. **Recherche des chapitres** :
+   Le programme récupère la page du manga et utilise **BeautifulSoup** pour analyser le code HTML.
+   Il trouve le lien du **premier et du dernier chapitre** et construit automatiquement la liste des URLs pour tous les chapitres disponibles.
+
+3. **Sélection des chapitres à télécharger** :
+   L’utilisateur choisit la plage de chapitres qu’il veut télécharger (par exemple, du chapitre 1 au chapitre 10).
+
+4. **Téléchargement multi-thread** :
+   Le programme utilise plusieurs threads (appelés “bots”) pour télécharger plusieurs chapitres en parallèle.
+   Chaque thread :
+
+   * Prend un chapitre dans la file d’attente
+   * Récupère la page HTML du chapitre
+   * Télécharge toutes les images (`<img>`) correspondant aux pages du chapitre
+   * Sauvegarde les images dans un dossier spécifique pour ce chapitre
+
+5. **Progression et interface** :
+
+   * Les labels à côté de chaque chapitre affichent l’état : en attente, en cours, terminé.
+   * Une barre de progression montre le pourcentage de chapitres téléchargés.
+
+6. **Organisation des fichiers** :
+   Les images sont sauvegardées dans un dossier principal (`images_telechargees`) avec un sous-dossier pour chaque manga et chaque chapitre.
+
+7. **Interface graphique** :
+
+   * Permet de saisir l’URL, vérifier les chapitres et lancer le téléchargement
+   * Affiche la progression et le statut de chaque chapitre
+   * Comporte des effets visuels sur les boutons au survol
+
+En résumé, le programme **cherche les chapitres**, **télécharge les images page par page** en parallèle, et **organise les fichiers de manière claire**, tout en affichant la progression à l’utilisateur.

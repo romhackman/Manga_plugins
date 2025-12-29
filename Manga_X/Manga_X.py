@@ -4,10 +4,12 @@ import threading
 import queue
 import requests
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from bs4 import BeautifulSoup
 from PIL import Image, ImageTk
 import pyperclip
+import shutil
+import json
 
 # ================= CONFIG =================
 FOND_PRINCIPAL = "#1f0c41"
@@ -18,7 +20,6 @@ TEXT_COLOR = "#e7afa9"
 ACCENT_COLOR = "#f6b9d9"
 
 MAX_BOTS = 10
-DOSSIER_BASE = "images_telechargees"
 DELAY = 0.05
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -34,7 +35,56 @@ debut_chapitre_total = 1
 fin_chapitre_total = 1
 surveillance_active = False
 
-# ---------------- Fonctions ----------------
+# ---------------- Gestion config.json ----------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMP_JSON = os.path.join(BASE_DIR, "temp_config.json")
+CONFIG_JSON_LUNCHER = os.path.join(BASE_DIR, "..", "..", "..", "..", "Luncher", "config.json")
+
+def copier_config_temporaire():
+    """
+    Copie le config.json de Luncher dans le dossier temporaire du programme.
+    Si le fichier Luncher est introuvable, demande à l'utilisateur de le sélectionner.
+    """
+    if os.path.exists(CONFIG_JSON_LUNCHER):
+        shutil.copy(CONFIG_JSON_LUNCHER, TEMP_JSON)
+    else:
+        messagebox.showinfo("Config manquant", "Le fichier config.json de Luncher est introuvable. Veuillez le sélectionner.")
+        chemin = filedialog.askopenfilename(title="Sélectionner config.json de Luncher", filetypes=[("JSON files", "*.json")])
+        if not chemin:
+            messagebox.showerror("Erreur", "Aucun fichier sélectionné. Le programme va quitter.")
+            exit()
+        shutil.copy(chemin, TEMP_JSON)
+
+def charger_chemin_manga():
+    """
+    Lit le chemin du manga depuis le JSON temporaire.
+    Vérifie que le chemin existe, sinon redemande le JSON.
+    """
+    while True:
+        if not os.path.exists(TEMP_JSON):
+            copier_config_temporaire()
+        try:
+            with open(TEMP_JSON, "r", encoding="utf-8") as f:
+                # On lit le contenu entier et on retire les accolades si nécessaire
+                contenu = f.read().strip()
+                if contenu.startswith("{") and contenu.endswith("}"):
+                    # JSON classique
+                    data = json.loads(contenu)
+                    chemin = data.get("manga_path", "").strip()
+                else:
+                    # JSON simplifié : chemin direct
+                    chemin = contenu.strip()
+            if os.path.exists(chemin):
+                return chemin
+            else:
+                messagebox.showwarning("Chemin invalide", f"Le chemin dans config.json n'existe pas :\n{chemin}")
+                os.remove(TEMP_JSON)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible de lire le config.json temporaire : {e}")
+            if os.path.exists(TEMP_JSON):
+                os.remove(TEMP_JSON)
+
+# ---------------- Fonctions de téléchargement ----------------
 
 def est_image(r):
     return r.headers.get("Content-Type", "").startswith("image")
@@ -49,7 +99,6 @@ def trouver_chapitres(manga_url):
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # Cas classique : plusieurs chapitres
     premier_tag = soup.find("a", id="btn-read-last")
     dernier_tag = soup.find("a", id="btn-read-first")
 
@@ -198,7 +247,6 @@ root.title("Succubus Downloader")
 root.geometry("1000x600")
 root.config(bg=FOND_PRINCIPAL)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 logo_path = os.path.join(BASE_DIR, "logo.png")
 try:
     root.iconphoto(False, tk.PhotoImage(file=logo_path))
@@ -253,6 +301,9 @@ btn_lancer = tk.Button(frame_gauche, text="Lancer le téléchargement", command=
 btn_lancer.pack(pady=10)
 btn_lancer.bind("<Enter>", on_enter)
 btn_lancer.bind("<Leave>", on_leave)
+
+# Charger le chemin depuis config.json
+DOSSIER_BASE = charger_chemin_manga()
 
 progress_var = tk.IntVar()
 ttk.Progressbar(frame_gauche, variable=progress_var, maximum=100).pack(fill="x", padx=20, pady=10)

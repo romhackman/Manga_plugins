@@ -41,37 +41,36 @@ TEMP_JSON = os.path.join(BASE_DIR, "temp_config.json")
 CONFIG_JSON_LUNCHER = os.path.join(BASE_DIR, "..", "..", "..", "..", "Luncher", "config.json")
 
 def copier_config_temporaire():
+    """Copie le config.json de Luncher dans TEMP_JSON ou crée un fichier minimal si absent"""
     if os.path.exists(CONFIG_JSON_LUNCHER):
         shutil.copy(CONFIG_JSON_LUNCHER, TEMP_JSON)
     else:
-        messagebox.showinfo("Config manquant", "Le fichier config.json de Luncher est introuvable. Veuillez le sélectionner.")
-        chemin = filedialog.askopenfilename(title="Sélectionner config.json de Luncher", filetypes=[("JSON files", "*.json")])
-        if not chemin:
-            messagebox.showerror("Erreur", "Aucun fichier sélectionné. Le programme va quitter.")
-            exit()
-        shutil.copy(chemin, TEMP_JSON)
+        # Création d'un JSON minimal
+        manga_default = os.path.join(BASE_DIR, "Mangas")
+        os.makedirs(manga_default, exist_ok=True)
+        data = {"manga_path": manga_default}
+        with open(TEMP_JSON, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
 
 def charger_chemin_manga():
-    while True:
-        if not os.path.exists(TEMP_JSON):
-            copier_config_temporaire()
-        try:
-            with open(TEMP_JSON, "r", encoding="utf-8") as f:
-                contenu = f.read().strip()
-                if contenu.startswith("{") and contenu.endswith("}"):
-                    data = json.loads(contenu)
-                    chemin = data.get("manga_path", "").strip()
-                else:
-                    chemin = contenu.strip()
-            if os.path.exists(chemin):
-                return chemin
+    """Charge le chemin des mangas depuis TEMP_JSON"""
+    if not os.path.exists(TEMP_JSON):
+        copier_config_temporaire()
+    try:
+        with open(TEMP_JSON, "r", encoding="utf-8") as f:
+            contenu = f.read().strip()
+            if contenu.startswith("{") and contenu.endswith("}"):
+                data = json.loads(contenu)
+                chemin = data.get("manga_path", "").strip()
             else:
-                messagebox.showwarning("Chemin invalide", f"Le chemin dans config.json n'existe pas :\n{chemin}")
-                os.remove(TEMP_JSON)
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Impossible de lire le config.json temporaire : {e}")
-            if os.path.exists(TEMP_JSON):
-                os.remove(TEMP_JSON)
+                chemin = contenu.strip()
+        if not chemin:
+            chemin = os.path.join(BASE_DIR, "Mangas")
+        os.makedirs(chemin, exist_ok=True)
+        return chemin
+    except Exception as e:
+        messagebox.showerror("Erreur", f"Impossible de lire le config.json temporaire : {e}")
+        exit()
 
 # ---------------- Fonctions de téléchargement ----------------
 def est_image(r):
@@ -285,23 +284,7 @@ btn_lancer.pack(pady=10)
 btn_lancer.bind("<Enter>", on_enter)
 btn_lancer.bind("<Leave>", on_leave)
 
-# ------------------- BOUTON PDF -------------------
-def lancer_pdf_creator():
-    def run_pdf():
-        try:
-            import pdfv2_x  # Assurez-vous que pdfV2_x.py est dans le même dossier
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Impossible de lancer PDF creator :\n{e}")
-    threading.Thread(target=run_pdf, daemon=True).start()
-
-btn_pdf = tk.Button(frame_gauche, text="Créer un PDF Manga", command=lancer_pdf_creator,
-                    bg=BOUTON_BG, fg=BOUTON_FG, width=35)
-btn_pdf.pack(pady=10)
-btn_pdf.bind("<Enter>", on_enter)
-btn_pdf.bind("<Leave>", on_leave)
-# ---------------------------------------------------
-
-# Charger le chemin depuis config.json
+# ---------------- Charger le chemin depuis config.json ----------------
 DOSSIER_BASE = charger_chemin_manga()
 
 progress_var = tk.IntVar()

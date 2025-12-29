@@ -41,10 +41,6 @@ TEMP_JSON = os.path.join(BASE_DIR, "temp_config.json")
 CONFIG_JSON_LUNCHER = os.path.join(BASE_DIR, "..", "..", "..", "..", "Luncher", "config.json")
 
 def copier_config_temporaire():
-    """
-    Copie le config.json de Luncher dans le dossier temporaire du programme.
-    Si le fichier Luncher est introuvable, demande à l'utilisateur de le sélectionner.
-    """
     if os.path.exists(CONFIG_JSON_LUNCHER):
         shutil.copy(CONFIG_JSON_LUNCHER, TEMP_JSON)
     else:
@@ -56,23 +52,16 @@ def copier_config_temporaire():
         shutil.copy(chemin, TEMP_JSON)
 
 def charger_chemin_manga():
-    """
-    Lit le chemin du manga depuis le JSON temporaire.
-    Vérifie que le chemin existe, sinon redemande le JSON.
-    """
     while True:
         if not os.path.exists(TEMP_JSON):
             copier_config_temporaire()
         try:
             with open(TEMP_JSON, "r", encoding="utf-8") as f:
-                # On lit le contenu entier et on retire les accolades si nécessaire
                 contenu = f.read().strip()
                 if contenu.startswith("{") and contenu.endswith("}"):
-                    # JSON classique
                     data = json.loads(contenu)
                     chemin = data.get("manga_path", "").strip()
                 else:
-                    # JSON simplifié : chemin direct
                     chemin = contenu.strip()
             if os.path.exists(chemin):
                 return chemin
@@ -85,7 +74,6 @@ def charger_chemin_manga():
                 os.remove(TEMP_JSON)
 
 # ---------------- Fonctions de téléchargement ----------------
-
 def est_image(r):
     return r.headers.get("Content-Type", "").startswith("image")
 
@@ -98,7 +86,6 @@ def trouver_chapitres(manga_url):
         return [], 1, 1
 
     soup = BeautifulSoup(r.text, "html.parser")
-
     premier_tag = soup.find("a", id="btn-read-last")
     dernier_tag = soup.find("a", id="btn-read-first")
 
@@ -107,7 +94,6 @@ def trouver_chapitres(manga_url):
         def extraire_num(url):
             m = re.search(r"chapitre-(\d+)/?", url)
             return int(m.group(1)) if m else 1
-
         debut = extraire_num(premier_tag["href"])
         fin = extraire_num(dernier_tag["href"])
         base_url = premier_tag["href"].rsplit("chapitre-", 1)[0] + "chapitre-"
@@ -130,7 +116,6 @@ def telecharger_chapitre(lien_chapitre, dossier):
     images = soup.select("div.page-break img.wp-manga-chapter-img")
     if not images:
         images = soup.find_all("img")
-
     if not images:
         print("Aucune image trouvée sur la page")
         return 0
@@ -170,7 +155,6 @@ def bot_worker(q):
         q.task_done()
 
 # ---------------- Actions Tkinter ----------------
-
 def verifier_chapitres():
     global chapitre_urls, debut_chapitre_total, fin_chapitre_total
     manga_url = entry_url.get().strip()
@@ -241,7 +225,6 @@ def on_leave(e):
     e.widget['background'] = BOUTON_BG
 
 # ---------------- Tkinter ----------------
-
 root = tk.Tk()
 root.title("Succubus Downloader")
 root.geometry("1000x600")
@@ -302,6 +285,22 @@ btn_lancer.pack(pady=10)
 btn_lancer.bind("<Enter>", on_enter)
 btn_lancer.bind("<Leave>", on_leave)
 
+# ------------------- BOUTON PDF -------------------
+def lancer_pdf_creator():
+    def run_pdf():
+        try:
+            import pdfv2_x  # Assurez-vous que pdfV2_x.py est dans le même dossier
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible de lancer PDF creator :\n{e}")
+    threading.Thread(target=run_pdf, daemon=True).start()
+
+btn_pdf = tk.Button(frame_gauche, text="Créer un PDF Manga", command=lancer_pdf_creator,
+                    bg=BOUTON_BG, fg=BOUTON_FG, width=35)
+btn_pdf.pack(pady=10)
+btn_pdf.bind("<Enter>", on_enter)
+btn_pdf.bind("<Leave>", on_leave)
+# ---------------------------------------------------
+
 # Charger le chemin depuis config.json
 DOSSIER_BASE = charger_chemin_manga()
 
@@ -343,11 +342,9 @@ def surveiller_presse_papiers():
                     if contenu.startswith("http"):
                         entry_url.delete(0, tk.END)
                         entry_url.insert(0, contenu)
-
                         root.attributes('-topmost', True)
                         root.update()
                         root.attributes('-topmost', False)
-
                         verifier_chapitres()
             except:
                 pass
